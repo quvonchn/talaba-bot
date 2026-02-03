@@ -16,6 +16,128 @@ BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '')
 DATABASE_PATH = 'talaba.db'
 
 
+def init_db_sync():
+    """Initialize database with tables (sync version for Flask)"""
+    conn = sqlite3.connect(DATABASE_PATH)
+    
+    # Qavatlar jadvali
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS floors (
+            id INTEGER PRIMARY KEY,
+            group_id TEXT,
+            supervisor_id TEXT,
+            supervisor_name TEXT
+        )
+    """)
+    
+    # Xonalar jadvali
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS rooms (
+            number INTEGER PRIMARY KEY,
+            floor INTEGER,
+            duty_days INTEGER DEFAULT 1
+        )
+    """)
+    
+    # Navbat jadvali
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS duty_schedule (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            date TEXT,
+            room_number INTEGER,
+            floor INTEGER,
+            status TEXT DEFAULT 'pending',
+            confirmed_by TEXT,
+            confirmed_at TEXT
+        )
+    """)
+    
+    # Jazolar jadvali
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS penalties (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            room_number INTEGER,
+            type TEXT,
+            reason TEXT,
+            start_date TEXT,
+            end_date TEXT,
+            issued_by TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    
+    # Talabalar ro'yxati
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS students (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            telegram_id TEXT,
+            name TEXT,
+            room_number INTEGER
+        )
+    """)
+    
+    # Qavat sardorlari
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS floor_supervisors (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            telegram_id TEXT UNIQUE,
+            name TEXT,
+            floors TEXT
+        )
+    """)
+    
+    # Davomat jadvali
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS attendance (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            date TEXT,
+            floor INTEGER,
+            student_count INTEGER,
+            submitted_by TEXT,
+            submitted_at TEXT
+        )
+    """)
+    
+    # Navbat navbati (skip qilingan xonalar)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS duty_queue (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            floor INTEGER,
+            room_number INTEGER,
+            reason TEXT,
+            skipped_by TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    
+    conn.commit()
+    
+    # Agar xonalar yo'q bo'lsa, yaratamiz
+    cursor = conn.execute("SELECT COUNT(*) FROM rooms")
+    count = cursor.fetchone()[0]
+    if count == 0:
+        # Qavatlarni yaratish (2-9)
+        for floor_num in range(2, 10):
+            conn.execute("INSERT OR IGNORE INTO floors (id) VALUES (?)", (floor_num,))
+        
+        # Xonalarni yaratish
+        for floor_num in range(2, 10):
+            for room_idx in range(1, 13):
+                room_number = floor_num * 100 + room_idx
+                conn.execute(
+                    "INSERT OR IGNORE INTO rooms (number, floor, duty_days) VALUES (?, ?, ?)",
+                    (room_number, floor_num, 1)
+                )
+        conn.commit()
+    
+    conn.close()
+    print("✅ Database initialized")
+
+
+# Initialize database on startup
+init_db_sync()
+
+
 def get_db():
     """Get database connection"""
     conn = sqlite3.connect(DATABASE_PATH)
