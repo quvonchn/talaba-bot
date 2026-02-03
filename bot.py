@@ -119,15 +119,20 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 **Sardorlar uchun:**
 /tasdiqlash [xona] - Navbatchilikni tasdiqlash
+/davomat - Davomat kiritish
 
-**Tarbiyachi uchun:**
+**Admin uchun:**
 /hisobot - Kunlik hisobot
 /jazo [xona] [kun] - Jazo berish
 /xabar - Guruhlarga xabar yuborish
 
+**Sardorlarni boshqarish (faqat admin):**
+/sardorlar - Sardorlar ro'yxati
+/setsardor [id] [ism] [qavatlar] - Sardor qo'shish
+/delsardor [telegram_id] - Sardorni o'chirish
+
 **Sozlash:**
 /setgroup [qavat] - Guruhni ulash
-/setsardor [qavat] - Sardorni belgilash
 /setadmin - Adminni belgilash
 """
     await update.message.reply_text(help_text, parse_mode='Markdown')
@@ -305,22 +310,33 @@ async def set_group(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def set_supervisor(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Sardorni belgilash"""
-    if not context.args:
+    """Sardorni belgilash - faqat admin uchun"""
+    user = update.effective_user
+    admin_id = os.getenv('ADMIN_ID')
+    
+    # Faqat admin sardorlarni boshqara oladi
+    if str(user.id) != admin_id:
+        await update.message.reply_text("❌ Bu buyruq faqat admin uchun!")
+        return
+    
+    if len(context.args) < 3:
         await update.message.reply_text(
-            "❌ Qavat raqamini kiriting!\n"
-            "Misol: `/setsardor 2`",
+            "❌ Format: `/setsardor [telegram_id] [ism] [qavatlar]`\n"
+            "Misol: `/setsardor 123456789 Sardor 2,3`",
             parse_mode='Markdown'
         )
         return
     
-    floor = int(context.args[0])
-    user = update.effective_user
+    telegram_id = context.args[0]
+    name = context.args[1]
+    floors = context.args[2]
     
-    await db.set_floor_supervisor(floor, str(user.id), user.first_name)
+    await db.add_floor_supervisor(telegram_id, name, floors)
     
     await update.message.reply_text(
-        f"✅ {user.first_name} **{floor}**-qavat sardori sifatida belgilandi!",
+        f"✅ {name} sardor sifatida qo'shildi!\n"
+        f"🆔 Telegram ID: `{telegram_id}`\n"
+        f"🏢 Qavatlar: {floors}",
         parse_mode='Markdown'
     )
 
@@ -335,6 +351,79 @@ async def set_admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"📝 `.env` faylidagi ADMIN_ID ga shu IDni yozing.",
         parse_mode='Markdown'
     )
+
+
+async def delete_supervisor(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Sardorni o'chirish - faqat admin uchun"""
+    user = update.effective_user
+    admin_id = os.getenv('ADMIN_ID')
+    
+    # Faqat admin sardorlarni o'chira oladi
+    if str(user.id) != admin_id:
+        await update.message.reply_text("❌ Bu buyruq faqat admin uchun!")
+        return
+    
+    if not context.args:
+        await update.message.reply_text(
+            "❌ Format: `/delsardor [telegram_id]`\n"
+            "Misol: `/delsardor 123456789`\n\n"
+            "📋 Sardorlar ro'yxati: /sardorlar",
+            parse_mode='Markdown'
+        )
+        return
+    
+    telegram_id = context.args[0]
+    
+    # Sardorni topish
+    supervisor = await db.get_floor_supervisor_by_telegram(telegram_id)
+    if not supervisor:
+        await update.message.reply_text(
+            f"❌ Telegram ID `{telegram_id}` bo'yicha sardor topilmadi!",
+            parse_mode='Markdown'
+        )
+        return
+    
+    await db.delete_floor_supervisor(supervisor['id'])
+    
+    await update.message.reply_text(
+        f"✅ Sardor o'chirildi!\n"
+        f"👤 Ism: {supervisor['name']}\n"
+        f"🆔 Telegram ID: `{telegram_id}`",
+        parse_mode='Markdown'
+    )
+
+
+async def list_supervisors(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Barcha sardorlar ro'yxati - faqat admin uchun"""
+    user = update.effective_user
+    admin_id = os.getenv('ADMIN_ID')
+    
+    # Faqat admin ko'ra oladi
+    if str(user.id) != admin_id:
+        await update.message.reply_text("❌ Bu buyruq faqat admin uchun!")
+        return
+    
+    supervisors = await db.get_all_floor_supervisors()
+    
+    if not supervisors:
+        await update.message.reply_text(
+            "📋 Sardorlar ro'yxati bo'sh!\n\n"
+            "Qo'shish uchun: `/setsardor [telegram_id] [ism] [qavatlar]`",
+            parse_mode='Markdown'
+        )
+        return
+    
+    message = "📋 **SARDORLAR RO'YXATI**\n\n"
+    for sup in supervisors:
+        message += f"👤 {sup['name']}\n"
+        message += f"   🆔 ID: `{sup['telegram_id']}`\n"
+        message += f"   🏢 Qavatlar: {sup['floors']}\n\n"
+    
+    message += "━━━━━━━━━━━━\n"
+    message += "➕ Qo'shish: `/setsardor [id] [ism] [qavatlar]`\n"
+    message += "➖ O'chirish: `/delsardor [telegram_id]`"
+    
+    await update.message.reply_text(message, parse_mode='Markdown')
 
 
 async def add_penalty(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -817,6 +906,8 @@ def main():
     app.add_handler(CommandHandler("hisobot", admin_report))
     app.add_handler(CommandHandler("setgroup", set_group))
     app.add_handler(CommandHandler("setsardor", set_supervisor))
+    app.add_handler(CommandHandler("delsardor", delete_supervisor))
+    app.add_handler(CommandHandler("sardorlar", list_supervisors))
     app.add_handler(CommandHandler("setadmin", set_admin))
     app.add_handler(CommandHandler("jazo", add_penalty))
     app.add_handler(CommandHandler("skip", skip_room))
