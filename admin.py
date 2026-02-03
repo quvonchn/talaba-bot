@@ -417,5 +417,81 @@ def api_attendance():
     })
 
 
+# ========== GURUHLAR ==========
+
+@app.route('/guruhlar')
+def guruhlar():
+    """Guruhlarni boshqarish sahifasi"""
+    conn = get_db()
+    
+    # Guruhlar ro'yxati
+    groups = []
+    floor_ranges = [(2, 3), (4, 5), (6, 7), (8, 9)]
+    
+    for start, end in floor_ranges:
+        # Birinchi qavatning group_id sini olish
+        floor = conn.execute(
+            "SELECT group_id FROM floors WHERE id = ?", (start,)
+        ).fetchone()
+        
+        groups.append({
+            'floors': f'{start}-{end}',
+            'floor_start': start,
+            'floor_end': end,
+            'group_id': floor['group_id'] if floor else None
+        })
+    
+    conn.close()
+    return render_template('guruhlar.html', 
+                          groups=groups,
+                          today=date.today().strftime('%d.%m.%Y'))
+
+
+@app.route('/save_group', methods=['POST'])
+def save_group():
+    """Guruh ID saqlash"""
+    floors = request.form.get('floors', '')
+    group_id = request.form.get('group_id', '').strip()
+    
+    if not floors:
+        return jsonify({"success": False, "error": "Qavatlar ko'rsatilmagan!"})
+    
+    start, end = floors.split('-')
+    
+    conn = get_db()
+    for floor in range(int(start), int(end) + 1):
+        conn.execute(
+            "UPDATE floors SET group_id = ? WHERE id = ?",
+            (group_id if group_id else None, floor)
+        )
+    conn.commit()
+    conn.close()
+    
+    return jsonify({"success": True})
+
+
+@app.route('/send_test_message', methods=['POST'])
+def send_test_message():
+    """Test xabarini guruhlarga yuborish"""
+    conn = get_db()
+    
+    floor_ranges = [(2, 3), (4, 5), (6, 7), (8, 9)]
+    sent = 0
+    
+    for start, end in floor_ranges:
+        floor = conn.execute(
+            "SELECT group_id FROM floors WHERE id = ?", (start,)
+        ).fetchone()
+        
+        if floor and floor['group_id']:
+            message = f"🧪 **TEST XABARI**\n\n✅ {start}-{end} qavatlar guruhi muvaffaqiyatli ulangan!"
+            result = send_telegram_message(floor['group_id'], message)
+            if result.get('ok'):
+                sent += 1
+    
+    conn.close()
+    return jsonify({"success": True, "sent": sent})
+
+
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
