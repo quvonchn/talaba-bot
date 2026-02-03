@@ -90,6 +90,7 @@ async def init_db():
                 date TEXT,
                 floor INTEGER,
                 student_count INTEGER,
+                notes TEXT,
                 submitted_by TEXT,
                 submitted_at TEXT
             )
@@ -297,7 +298,7 @@ async def delete_floor_supervisor(supervisor_id: int):
 
 # ========== Attendance (Davomat) ==========
 
-async def save_attendance(floor: int, student_count: int, submitted_by: str):
+async def save_attendance(floor: int, student_count: int, submitted_by: str, notes: str = None):
     """Davomatni saqlash"""
     today = date.today().isoformat()
     now = datetime.now().isoformat()
@@ -310,16 +311,16 @@ async def save_attendance(floor: int, student_count: int, submitted_by: str):
         if await existing.fetchone():
             # Yangilash
             await db.execute(
-                """UPDATE attendance SET student_count = ?, submitted_by = ?, submitted_at = ?
+                """UPDATE attendance SET student_count = ?, notes = ?, submitted_by = ?, submitted_at = ?
                    WHERE date = ? AND floor = ?""",
-                (student_count, submitted_by, now, today, floor)
+                (student_count, notes, submitted_by, now, today, floor)
             )
         else:
             # Yangi qo'shish
             await db.execute(
-                """INSERT INTO attendance (date, floor, student_count, submitted_by, submitted_at)
-                   VALUES (?, ?, ?, ?, ?)""",
-                (today, floor, student_count, submitted_by, now)
+                """INSERT INTO attendance (date, floor, student_count, notes, submitted_by, submitted_at)
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                (today, floor, student_count, notes, submitted_by, now)
             )
         await db.commit()
 
@@ -347,6 +348,18 @@ async def get_attendance_by_date(target_date: str) -> list:
         )
         rows = await cursor.fetchall()
         return [dict(row) for row in rows]
+
+
+async def get_floor_attendance_for_date(floor: int, target_date: str) -> dict:
+    """Ma'lum qavat uchun berilgan sanadagi davomat"""
+    async with aiosqlite.connect(DATABASE_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        cursor = await db.execute(
+            "SELECT * FROM attendance WHERE date = ? AND floor = ?",
+            (target_date, floor)
+        )
+        row = await cursor.fetchone()
+        return dict(row) if row else None
 
 
 # ========== Duty Queue (Skip) ==========

@@ -510,9 +510,58 @@ async def post_init(application):
     logger.info("🤖 Talaba Bot tayyor!")
 
 
+# ============= SCHEDULED JOBS =============
+
+async def send_attendance_reminder_22(context: ContextTypes.DEFAULT_TYPE):
+    """22:00 - Sardorlarga birinchi davomat eslatmasi"""
+    supervisors = await db.get_all_supervisors()
+    
+    for sup in supervisors:
+        try:
+            await context.bot.send_message(
+                chat_id=sup['telegram_id'],
+                text="📊 **DAVOMAT VAQTI!**\n\n"
+                     f"Hurmatli {sup['name']}!\n"
+                     "23:00 gacha davomatni kiriting.\n\n"
+                     "Kiritish uchun: /davomat",
+                parse_mode='Markdown'
+            )
+        except Exception as e:
+            logger.error(f"22:00 eslatma xatosi: {e}")
+
+
+async def send_attendance_reminder_23(context: ContextTypes.DEFAULT_TYPE):
+    """23:00 - Kiritmaganlar uchun ikkinchi eslatma"""
+    supervisors = await db.get_all_supervisors()
+    today = date.today().isoformat()
+    
+    for sup in supervisors:
+        # Bu sardor kiritganmi tekshirish
+        floors = sup['floors'].split(',')
+        not_submitted = []
+        
+        for floor in floors:
+            attendance = await db.get_floor_attendance_for_date(int(floor), today)
+            if not attendance:
+                not_submitted.append(floor)
+        
+        if not_submitted:
+            try:
+                await context.bot.send_message(
+                    chat_id=sup['telegram_id'],
+                    text="⚠️ **DAVOMAT KIRITILMAGAN!**\n\n"
+                         f"Hurmatli {sup['name']}!\n"
+                         f"Qavatlar: {', '.join(not_submitted)}\n\n"
+                         "Iltimos, hozir kiriting: /davomat",
+                    parse_mode='Markdown'
+                )
+            except Exception as e:
+                logger.error(f"23:00 eslatma xatosi: {e}")
+
+
 # ============= ATTENDANCE CONVERSATION =============
 
-SELECTING_FLOOR, ENTERING_COUNT = range(2)
+SELECTING_FLOOR, ENTERING_COUNT, ENTERING_NOTES = range(3)
 
 async def start_attendance(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Davomat kiritishni boshlash"""
@@ -568,10 +617,32 @@ async def count_entered(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ Faqat son kiriting!")
         return ENTERING_COUNT
     
+    context.user_data['current_count'] = count
+    
+    keyboard = [
+        [InlineKeyboardButton("✅ Hamma kelgan", callback_data="att_notes_skip")],
+    ]
+    
+    await update.message.reply_text(
+        f"✅ Jami: **{count}** ta talaba\n\n"
+        "Kelmaganlar bormi?\n"
+        "Agar bor bo'lsa, yozing:\n"
+        "`202 Botirov Quvonchbek, 204 Tohirov Ibrohim`\n\n"
+        "Yoki 'Hamma kelgan' tugmasini bosing 👇",
+        parse_mode='Markdown',
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+    return ENTERING_NOTES
+
+
+async def notes_entered(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Kelmaganlar kiritilganda"""
+    notes = update.message.text if update.message else None
     floor = int(context.user_data['current_floor'])
+    count = context.user_data['current_count']
     supervisor_name = context.user_data['supervisor_name']
     
-    await db.save_attendance(floor, count, supervisor_name)
+    await db.save_attendance(floor, count, supervisor_name, notes)
     
     context.user_data['submitted_floors'].append(str(floor))
     remaining = [f for f in context.user_data['floors_to_submit'] 
@@ -588,6 +659,39 @@ async def count_entered(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return SELECTING_FLOOR
     else:
         await update.message.reply_text(
+            f"✅ **Davomat kiritildi!**\n\n"
+            f"Rahmat, {supervisor_name}! 🎉",
+            parse_mode='Markdown'
+        )
+        return ConversationHandler.END
+
+
+async def notes_skipped(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Kelmaganlar yo'q - skip"""
+    query = update.callback_query
+    await query.answer()
+    
+    floor = int(context.user_data['current_floor'])
+    count = context.user_data['current_count']
+    supervisor_name = context.user_data['supervisor_name']
+    
+    await db.save_attendance(floor, count, supervisor_name, None)
+    
+    context.user_data['submitted_floors'].append(str(floor))
+    remaining = [f for f in context.user_data['floors_to_submit'] 
+                 if f not in context.user_data['submitted_floors']]
+    
+    if remaining:
+        keyboard = [[InlineKeyboardButton(f"{f}-qavat", callback_data=f"att_floor_{f}")] for f in remaining]
+        await query.edit_message_text(
+            f"✅ **{floor}-qavat:** {count} ta (hamma kelgan)\n\n"
+            "Keyingi qavat uchun tanlang 👇",
+            parse_mode='Markdown',
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+        return SELECTING_FLOOR
+    else:
+        await query.edit_message_text(
             f"✅ **Davomat kiritildi!**\n\n"
             f"Rahmat, {supervisor_name}! 🎉",
             parse_mode='Markdown'
@@ -657,14 +761,35 @@ async def send_attendance_report(update: Update, context: ContextTypes.DEFAULT_T
 
 def main():
     """Start the bot"""
+    from datetime import time as dt_time
+    import pytz
+    
     token = os.getenv('TELEGRAM_BOT_TOKEN')
     
     if not token:
         logger.error("TELEGRAM_BOT_TOKEN not found!")
         return
     
-    # Create application without job_queue
-    app = Application.builder().token(token).job_queue(None).post_init(post_init).build()
+    # Create application WITH job_queue
+    app = Application.builder().token(token).post_init(post_init).build()
+    
+    # Scheduled jobs (Toshkent vaqti - UTC+5)
+    tz = pytz.timezone('Asia/Tashkent')
+    
+    if app.job_queue:
+        # 22:00 - Birinchi eslatma
+        app.job_queue.run_daily(
+            send_attendance_reminder_22,
+            time=dt_time(hour=22, minute=0, tzinfo=tz),
+            name="attendance_22"
+        )
+        # 23:00 - Ikkinchi eslatma (kiritmaganlar uchun)
+        app.job_queue.run_daily(
+            send_attendance_reminder_23,
+            time=dt_time(hour=23, minute=0, tzinfo=tz),
+            name="attendance_23"
+        )
+        logger.info("⏰ Scheduled jobs: 22:00, 23:00 davomat eslatmalari")
     
     # Attendance ConversationHandler
     attendance_conv = ConversationHandler(
@@ -672,6 +797,10 @@ def main():
         states={
             SELECTING_FLOOR: [CallbackQueryHandler(floor_selected, pattern=r"^att_floor_")],
             ENTERING_COUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, count_entered)],
+            ENTERING_NOTES: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, notes_entered),
+                CallbackQueryHandler(notes_skipped, pattern=r"^att_notes_skip$"),
+            ],
         },
         fallbacks=[CommandHandler("bekor", cancel_attendance)],
     )
