@@ -116,9 +116,25 @@ def init_db_sync():
     cursor = conn.execute("SELECT COUNT(*) FROM rooms")
     count = cursor.fetchone()[0]
     if count == 0:
-        # Qavatlarni yaratish (2-9)
+        # Guruh IDlari (user tomonidan kiritilgan)
+        group_ids = {
+            2: '-1003863032013',  # 2-3 qavatlar
+            3: '-1003863032013',
+            4: '-5235799007',      # 4-5 qavatlar
+            5: '-5235799007',
+            6: '-5130425556',      # 6-7 qavatlar
+            7: '-5130425556',
+            8: '-5264518799',      # 8-9 qavatlar
+            9: '-5264518799',
+        }
+        
+        # Qavatlarni yaratish (2-9) bilan group_id
         for floor_num in range(2, 10):
-            conn.execute("INSERT OR IGNORE INTO floors (id) VALUES (?)", (floor_num,))
+            group_id = group_ids.get(floor_num)
+            conn.execute(
+                "INSERT OR IGNORE INTO floors (id, group_id) VALUES (?, ?)", 
+                (floor_num, group_id)
+            )
         
         # Xonalarni yaratish
         for floor_num in range(2, 10):
@@ -132,6 +148,7 @@ def init_db_sync():
     
     conn.close()
     print("✅ Database initialized")
+
 
 
 # Initialize database on startup
