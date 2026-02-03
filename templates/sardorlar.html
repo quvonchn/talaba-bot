@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="uz">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sardorlar - Talaba Bot</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #024da5;
+            --primary-dark: #013a7a;
+            --secondary: #f8f9fa;
+            --success: #28a745;
+            --danger: #dc3545;
+            --warning: #ffc107;
+            --text-dark: #212529;
+            --text-muted: #6c757d;
+            --border: #dee2e6;
+            --bg-light: #f4f6f9;
+        }
+
+        * {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        body {
+            background: var(--bg-light);
+            color: var(--text-dark);
+            min-height: 100vh;
+        }
+
+        /* Header - TSUE style */
+        .top-bar {
+            background: var(--primary-dark);
+            padding: 8px 0;
+            font-size: 13px;
+        }
+
+        .top-bar a {
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+        }
+
+        .top-bar a:hover {
+            color: #fff;
+        }
+
+        .main-header {
+            background: var(--primary);
+            padding: 15px 0;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .main-header .brand {
+            color: #fff;
+            font-size: 1.5rem;
+            font-weight: 700;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .main-header .brand i {
+            font-size: 2rem;
+        }
+
+        .nav-menu {
+            background: #fff;
+            border-bottom: 1px solid var(--border);
+            padding: 0;
+        }
+
+        .nav-menu .nav-link {
+            color: var(--text-dark);
+            font-weight: 500;
+            font-size: 14px;
+            text-transform: uppercase;
+            padding: 15px 20px;
+            transition: all 0.2s;
+        }
+
+        .nav-menu .nav-link:hover,
+        .nav-menu .nav-link.active {
+            color: var(--primary);
+            background: var(--bg-light);
+        }
+
+        /* Cards - TSUE style */
+        .card {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        }
+
+        .card-header {
+            background: var(--primary);
+            color: #fff;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 14px;
+            letter-spacing: 0.5px;
+            padding: 15px 20px;
+            border-bottom: none;
+            border-radius: 8px 8px 0 0 !important;
+        }
+
+        .card-body {
+            padding: 20px;
+        }
+
+        /* Form elements */
+        .form-label {
+            font-weight: 500;
+            font-size: 14px;
+            color: var(--text-dark);
+            margin-bottom: 6px;
+        }
+
+        .form-control,
+        .form-select {
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 10px 14px;
+            font-size: 14px;
+        }
+
+        .form-control:focus,
+        .form-select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(2, 77, 165, 0.15);
+        }
+
+        /* Buttons - TSUE style */
+        .btn-primary {
+            background: var(--primary);
+            border: none;
+            font-weight: 600;
+            padding: 10px 24px;
+            border-radius: 6px;
+            text-transform: uppercase;
+            font-size: 13px;
+            letter-spacing: 0.3px;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            border: none;
+        }
+
+        .btn-success {
+            background: var(--success);
+            border: none;
+        }
+
+        /* Table - TSUE style */
+        .table {
+            margin-bottom: 0;
+        }
+
+        .table thead th {
+            background: var(--bg-light);
+            border-bottom: 2px solid var(--primary);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 12px;
+            color: var(--text-muted);
+            padding: 12px 15px;
+        }
+
+        .table tbody td {
+            padding: 15px;
+            vertical-align: middle;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .table tbody tr:hover {
+            background: var(--bg-light);
+        }
+
+        /* Badges */
+        .badge-floors {
+            background: var(--primary);
+            color: #fff;
+            padding: 6px 14px;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        /* Toast */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+        }
+
+        /* Page title */
+        .page-title {
+            color: var(--text-dark);
+            font-weight: 700;
+            font-size: 24px;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--primary);
+        }
+
+        .text-sm {
+            font-size: 13px;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Top Bar -->
+    <div class="top-bar">
+        <div class="container d-flex justify-content-between align-items-center">
+            <div>
+                <a href="/" class="me-3"><i class="bi bi-house-door me-1"></i>Bosh sahifa</a>
+                <a href="/sardorlar" class="me-3"><i class="bi bi-people me-1"></i>Sardorlar</a>
+                <a href="/davomat"><i class="bi bi-clipboard-check me-1"></i>Davomat</a>
+            </div>
+            <span class="text-white-50">{{ today }}</span>
+        </div>
+    </div>
+
+    <!-- Main Header -->
+    <header class="main-header">
+        <div class="container">
+            <a href="/" class="brand">
+                <i class="bi bi-mortarboard-fill"></i>
+                TALABA BOT - ADMIN PANEL
+            </a>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="nav-menu">
+        <div class="container">
+            <ul class="nav">
+                <li class="nav-item"><a class="nav-link" href="/"><i class="bi bi-speedometer2 me-1"></i>Dashboard</a>
+                </li>
+                <li class="nav-item"><a class="nav-link active" href="/sardorlar"><i
+                            class="bi bi-people-fill me-1"></i>Sardorlar</a></li>
+                <li class="nav-item"><a class="nav-link" href="/davomat"><i
+                            class="bi bi-clipboard-data me-1"></i>Davomat</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container py-4">
+        <h1 class="page-title"><i class="bi bi-people-fill me-2"></i>SARDORLAR RO'YXATI</h1>
+
+        <div class="row">
+            <!-- Sardor Qo'shish -->
+            <div class="col-lg-4 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="bi bi-person-plus-fill me-2"></i>Yangi Sardor
+                    </div>
+                    <div class="card-body">
+                        <form id="addSupervisorForm">
+                            <div class="mb-3">
+                                <label class="form-label">Telegram ID</label>
+                                <input type="text" class="form-control" name="telegram_id" placeholder="123456789"
+                                    required>
+                                <small class="text-muted text-sm">@userinfobot dan oling</small>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Ism Familiya</label>
+                                <input type="text" class="form-control" name="name" placeholder="Sardor ismi" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Mas'ul qavatlar</label>
+                                <select class="form-select" name="floors" required>
+                                    <option value="2,3">2-3 qavatlar</option>
+                                    <option value="4,5">4-5 qavatlar</option>
+                                    <option value="6,7">6-7 qavatlar</option>
+                                    <option value="8,9">8-9 qavatlar</option>
+                                </select>
+                                <small class="text-muted">Bino: 9 qavat (1-qavat umumiy)</small>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-plus-lg me-2"></i>QO'SHISH
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sardorlar Jadvali -->
+            <div class="col-lg-8 mb-4">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-table me-2"></i>Ro'yxatdagi Sardorlar</span>
+                        <span class="badge bg-light text-dark">{{ supervisors|length }} ta</span>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Ism</th>
+                                        <th>Telegram ID</th>
+                                        <th>Qavatlar</th>
+                                        <th>Amal</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for s in supervisors %}
+                                    <tr>
+                                        <td><strong>{{ loop.index }}</strong></td>
+                                        <td><strong>{{ s.name }}</strong></td>
+                                        <td><code>{{ s.telegram_id }}</code></td>
+                                        <td><span class="badge-floors">{{ s.floors }}-qavat</span></td>
+                                        <td>
+                                            <button class="btn btn-sm btn-danger"
+                                                onclick="deleteSupervisor({{ s.id }})">
+                                                <i class="bi bi-trash"></i> O'chirish
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                    {% if not supervisors %}
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted py-4">
+                                            <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+                                            <p class="mb-0 mt-2">Sardorlar hali qo'shilmagan</p>
+                                        </td>
+                                    </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast show bg-${type} text-white`;
+            toast.style.borderRadius = '6px';
+            toast.innerHTML = `
+                <div class="toast-body d-flex align-items-center">
+                    <i class="bi bi-${type === 'success' ? 'check-circle' : 'exclamation-circle'} me-2"></i>
+                    ${message}
+                </div>
+            `;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        document.getElementById('addSupervisorForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            
+            fetch('/add_supervisor', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('Sardor muvaffaqiyatli qo\'shildi!');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showToast(data.error, 'danger');
+                }
+            });
+        });
+
+        function deleteSupervisor(id) {
+            if (!confirm('Rostdan ham bu sardorni o\'chirmoqchimisiz?')) return;
+            
+            fetch(`/delete_supervisor/${id}`, { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast('Sardor o\'chirildi!');
+                        setTimeout(() => location.reload(), 1000);
+                    }
+                });
+        }
+    </script>
+</body>
+
+</html>

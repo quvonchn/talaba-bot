@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="uz">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Talaba Bot - Admin Panel</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #024da5;
+            --primary-dark: #013a7a;
+            --secondary: #f8f9fa;
+            --success: #28a745;
+            --danger: #dc3545;
+            --warning: #ffc107;
+            --text-dark: #212529;
+            --text-muted: #6c757d;
+            --border: #dee2e6;
+            --bg-light: #f4f6f9;
+        }
+
+        * {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        body {
+            background: var(--bg-light);
+            color: var(--text-dark);
+            min-height: 100vh;
+        }
+
+        /* Header - TSUE style */
+        .top-bar {
+            background: var(--primary-dark);
+            padding: 8px 0;
+            font-size: 13px;
+        }
+
+        .top-bar a {
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+        }
+
+        .top-bar a:hover {
+            color: #fff;
+        }
+
+        .main-header {
+            background: var(--primary);
+            padding: 15px 0;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .main-header .brand {
+            color: #fff;
+            font-size: 1.5rem;
+            font-weight: 700;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .main-header .brand i {
+            font-size: 2rem;
+        }
+
+        .nav-menu {
+            background: #fff;
+            border-bottom: 1px solid var(--border);
+            padding: 0;
+        }
+
+        .nav-menu .nav-link {
+            color: var(--text-dark);
+            font-weight: 500;
+            font-size: 14px;
+            text-transform: uppercase;
+            padding: 15px 20px;
+            transition: all 0.2s;
+        }
+
+        .nav-menu .nav-link:hover,
+        .nav-menu .nav-link.active {
+            color: var(--primary);
+            background: var(--bg-light);
+        }
+
+        /* Cards */
+        .card {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        }
+
+        .card-header {
+            background: var(--primary);
+            color: #fff;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 14px;
+            letter-spacing: 0.5px;
+            padding: 15px 20px;
+            border-bottom: none;
+            border-radius: 8px 8px 0 0 !important;
+        }
+
+        .card-body {
+            padding: 20px;
+        }
+
+        /* Stats Cards */
+        .stat-card {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 25px;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .stat-card:hover {
+            box-shadow: 0 4px 15px rgba(2, 77, 165, 0.15);
+            border-color: var(--primary);
+        }
+
+        .stat-card .icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 15px;
+            font-size: 1.5rem;
+        }
+
+        .stat-card .icon.blue {
+            background: rgba(2, 77, 165, 0.1);
+            color: var(--primary);
+        }
+
+        .stat-card .icon.green {
+            background: rgba(40, 167, 69, 0.1);
+            color: var(--success);
+        }
+
+        .stat-card .icon.orange {
+            background: rgba(255, 193, 7, 0.1);
+            color: #e67e22;
+        }
+
+        .stat-card .icon.red {
+            background: rgba(220, 53, 69, 0.1);
+            color: var(--danger);
+        }
+
+        .stat-card .value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-dark);
+        }
+
+        .stat-card .label {
+            color: var(--text-muted);
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Form elements */
+        .form-control,
+        .form-select {
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 10px 14px;
+        }
+
+        .form-control:focus,
+        .form-select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(2, 77, 165, 0.15);
+        }
+
+        /* Buttons */
+        .btn-primary {
+            background: var(--primary);
+            border: none;
+            font-weight: 600;
+            padding: 10px 24px;
+            border-radius: 6px;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-success {
+            background: var(--success);
+            border: none;
+        }
+
+        .btn-warning {
+            background: var(--warning);
+            border: none;
+            color: #000;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            border: none;
+        }
+
+        /* Table */
+        .table {
+            margin-bottom: 0;
+        }
+
+        .table thead th {
+            background: var(--bg-light);
+            border-bottom: 2px solid var(--primary);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 12px;
+            color: var(--text-muted);
+            padding: 12px 15px;
+        }
+
+        .table tbody td {
+            padding: 15px;
+            vertical-align: middle;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .page-title {
+            color: var(--text-dark);
+            font-weight: 700;
+            font-size: 24px;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--primary);
+        }
+
+        /* Quick actions */
+        .quick-action {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px;
+            background: var(--bg-light);
+            border-radius: 8px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+
+        .quick-action:hover {
+            border-color: var(--primary);
+            background: #fff;
+        }
+
+        .quick-action .icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            color: #fff;
+        }
+
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Top Bar -->
+    <div class="top-bar">
+        <div class="container d-flex justify-content-between align-items-center">
+            <div>
+                <a href="/" class="me-3"><i class="bi bi-house-door me-1"></i>Bosh sahifa</a>
+                <a href="/sardorlar" class="me-3"><i class="bi bi-people me-1"></i>Sardorlar</a>
+                <a href="/davomat"><i class="bi bi-clipboard-check me-1"></i>Davomat</a>
+            </div>
+            <span class="text-white-50">{{ today }}</span>
+        </div>
+    </div>
+
+    <!-- Main Header -->
+    <header class="main-header">
+        <div class="container">
+            <a href="/" class="brand">
+                <i class="bi bi-mortarboard-fill"></i>
+                TALABA BOT - ADMIN PANEL
+            </a>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="nav-menu">
+        <div class="container">
+            <ul class="nav">
+                <li class="nav-item"><a class="nav-link active" href="/"><i
+                            class="bi bi-speedometer2 me-1"></i>Dashboard</a></li>
+                <li class="nav-item"><a class="nav-link" href="/sardorlar"><i
+                            class="bi bi-people-fill me-1"></i>Sardorlar</a></li>
+                <li class="nav-item"><a class="nav-link" href="/davomat"><i
+                            class="bi bi-clipboard-data me-1"></i>Davomat</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container py-4">
+        <h1 class="page-title"><i class="bi bi-speedometer2 me-2"></i>BOSHQARUV PANELI</h1>
+
+        <!-- Stats Row -->
+        <div class="row mb-4" id="statsRow">
+            <div class="col-md-3 col-6 mb-3">
+                <div class="stat-card">
+                    <div class="icon blue"><i class="bi bi-building"></i></div>
+                    <div class="value" id="totalDuties">8</div>
+                    <div class="label">Talabalar qavati (2-9)</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6 mb-3">
+                <div class="stat-card">
+                    <div class="icon green"><i class="bi bi-check-circle"></i></div>
+                    <div class="value" id="completedDuties">0</div>
+                    <div class="label">Bajarildi</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6 mb-3">
+                <div class="stat-card">
+                    <div class="icon orange"><i class="bi bi-hourglass-split"></i></div>
+                    <div class="value" id="pendingDuties">0</div>
+                    <div class="label">Kutilmoqda</div>
+                </div>
+            </div>
+            <div class="col-md-3 col-6 mb-3">
+                <div class="stat-card">
+                    <div class="icon red"><i class="bi bi-exclamation-triangle"></i></div>
+                    <div class="value" id="totalPenalties">0</div>
+                    <div class="label">Jazolar</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Push Notification Card -->
+            <div class="col-lg-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <i class="bi bi-bell-fill me-2"></i>Push Xabar Yuborish
+                    </div>
+                    <div class="card-body">
+                        <form id="pushForm">
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Qaysi guruhlarga?</label>
+                                <select class="form-select" name="target" id="targetSelect">
+                                    <option value="all">Barcha guruhlar</option>
+                                    <option value="2-3">2-3 qavatlar</option>
+                                    <option value="4-5">4-5 qavatlar</option>
+                                    <option value="6-7">6-7 qavatlar</option>
+                                    <option value="8-9">8-9 qavatlar</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Xabar matni</label>
+                                <textarea class="form-control" name="message" rows="4"
+                                    placeholder="Xabarni yozing..."></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-send me-2"></i>YUBORISH
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions Card -->
+            <div class="col-lg-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <i class="bi bi-lightning-fill me-2"></i>Tez Harakatlar
+                    </div>
+                    <div class="card-body">
+                        <div class="quick-action" onclick="sendDutyReminder()">
+                            <div class="icon" style="background: var(--success);">
+                                <i class="bi bi-megaphone"></i>
+                            </div>
+                            <div>
+                                <div class="fw-bold">Navbatchilik Eslatmasi</div>
+                                <div class="text-muted small">Barcha guruhlarga bugungi navbatchilarni yuborish</div>
+                            </div>
+                        </div>
+
+                        <div class="quick-action" data-bs-toggle="modal" data-bs-target="#penaltyModal">
+                            <div class="icon" style="background: var(--danger);">
+                                <i class="bi bi-exclamation-octagon"></i>
+                            </div>
+                            <div>
+                                <div class="fw-bold">Jazo Berish</div>
+                                <div class="text-muted small">Xonaga jazo yozish</div>
+                            </div>
+                        </div>
+
+                        <div class="quick-action" onclick="location.reload()">
+                            <div class="icon" style="background: var(--primary);">
+                                <i class="bi bi-arrow-clockwise"></i>
+                            </div>
+                            <div>
+                                <div class="fw-bold">Yangilash</div>
+                                <div class="text-muted small">Sahifani yangilash</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Today's Duties -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <i class="bi bi-calendar-check me-2"></i>Bugungi Navbatchilar
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Qavat</th>
+                                <th>Xona</th>
+                                <th>Status</th>
+                                <th>Tasdiqlagan</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for duty in duties %}
+                            <tr>
+                                <td><strong>{{ duty.floor }}-qavat</strong></td>
+                                <td>{{ duty.room_number }}-xona</td>
+                                <td>
+                                    {% if duty.status == 'completed' %}
+                                    <span class="badge bg-success">✅ Bajarildi</span>
+                                    {% else %}
+                                    <span class="badge bg-warning text-dark">⏳ Kutilmoqda</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ duty.confirmed_by or '-' }}</td>
+                            </tr>
+                            {% endfor %}
+                            {% if not duties %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted py-4">
+                                    Bugungi navbatlar hali yaratilmagan
+                                </td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Penalty Modal -->
+    <div class="modal fade" id="penaltyModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">
+                        <i class="bi bi-exclamation-triangle me-2"></i>Jazo Berish
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="penaltyForm">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Xona raqami</label>
+                            <input type="number" class="form-control" name="room_number" placeholder="Masalan: 201"
+                                required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Necha kun?</label>
+                            <select class="form-select" name="days">
+                                <option value="3">3 kun navbatchilik</option>
+                                <option value="5">5 kun navbatchilik</option>
+                                <option value="7">7 kun navbatchilik</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Bekor</button>
+                    <button type="button" class="btn btn-danger" onclick="submitPenalty()">
+                        <i class="bi bi-check me-1"></i>Jazo berish
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', loadStats);
+
+        function loadStats() {
+            fetch('/api/stats')
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('totalDuties').textContent = data.total_duties;
+                    document.getElementById('completedDuties').textContent = data.completed;
+                    document.getElementById('pendingDuties').textContent = data.pending;
+                    document.getElementById('totalPenalties').textContent = data.total_penalties;
+                });
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast show bg-${type} text-white`;
+            toast.style.borderRadius = '6px';
+            toast.innerHTML = `
+                <div class="toast-body d-flex align-items-center">
+                    <i class="bi bi-${type === 'success' ? 'check-circle' : 'exclamation-circle'} me-2"></i>
+                    ${message}
+                </div>
+            `;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        document.getElementById('pushForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+
+            fetch('/send_notification', {
+                method: 'POST',
+                body: formData
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast(`${data.sent} ta guruhga xabar yuborildi!`);
+                        this.reset();
+                    } else {
+                        showToast(data.error, 'danger');
+                    }
+                });
+        });
+
+        function sendDutyReminder() {
+            fetch('/send_duty_reminder', { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast(`${data.sent} ta guruhga eslatma yuborildi!`);
+                    }
+                });
+        }
+
+        function submitPenalty() {
+            const form = document.getElementById('penaltyForm');
+            const formData = new FormData(form);
+
+            fetch('/add_penalty', {
+                method: 'POST',
+                body: formData
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast('Jazo muvaffaqiyatli berildi!');
+                        bootstrap.Modal.getInstance(document.getElementById('penaltyModal')).hide();
+                        form.reset();
+                        loadStats();
+                    }
+                });
+        }
+    </script>
+</body>
+
+</html>
