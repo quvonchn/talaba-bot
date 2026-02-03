@@ -226,7 +226,36 @@ def send_duty_reminder():
     conn = get_db()
     today = date.today().isoformat()
     
-    # Get groups
+    # Avval bugungi navbatlarni yaratish
+    for floor in range(2, 10):
+        existing = conn.execute(
+            "SELECT id FROM duty_schedule WHERE date = ? AND floor = ?",
+            (today, floor)
+        ).fetchone()
+        
+        if not existing:
+            # Navbat yaratish
+            rooms = conn.execute(
+                "SELECT number FROM rooms WHERE floor = ? ORDER BY number",
+                (floor,)
+            ).fetchall()
+            
+            if rooms:
+                room_numbers = [r['number'] for r in rooms]
+                day_of_year = date.today().timetuple().tm_yday
+                floor_offset = (floor - 2) * 3
+                duty_index = (day_of_year + floor_offset) % len(room_numbers)
+                duty_room = room_numbers[duty_index]
+                
+                conn.execute(
+                    """INSERT INTO duty_schedule (date, room_number, floor, status)
+                       VALUES (?, ?, ?, 'pending')""",
+                    (today, duty_room, floor)
+                )
+    
+    conn.commit()
+    
+    # Get groups from database
     groups = {
         (2, 3): None,
         (4, 5): None,
