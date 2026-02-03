@@ -16,34 +16,45 @@ async def generate_duty_schedule():
     async with aiosqlite.connect(db.DATABASE_PATH) as conn:
         # Har bir qavat uchun
         for floor in range(2, 10):
-            # Qavat xonalarini olish
-            cursor = await conn.execute(
-                "SELECT number, duty_days FROM rooms WHERE floor = ? ORDER BY number",
-                (floor,)
-            )
-            rooms = await cursor.fetchall()
-            
-            # Navbat ketma-ketligini yaratish
-            duty_sequence = []
-            for room_num, duty_days in rooms:
-                duty_sequence.extend([room_num] * duty_days)
-            
-            # Bugungi kun uchun navbatchi xonani hisoblash
-            day_of_year = today.timetuple().tm_yday
-            duty_index = day_of_year % len(duty_sequence)
-            duty_room = duty_sequence[duty_index]
-            
-            # Bazaga yozish (agar yo'q bo'lsa)
+            # Avval mavjud jadval bor-yo'qligini tekshirish
             existing = await conn.execute(
                 "SELECT id FROM duty_schedule WHERE date = ? AND floor = ?",
                 (today.isoformat(), floor)
             )
-            if not await existing.fetchone():
-                await conn.execute(
-                    """INSERT INTO duty_schedule (date, room_number, floor, status)
-                       VALUES (?, ?, ?, 'pending')""",
-                    (today.isoformat(), duty_room, floor)
+            if await existing.fetchone():
+                continue  # Allaqachon mavjud
+            
+            # 1. Avval queue'dagi xonalarni tekshirish (skip qilinganlar)
+            queued = await db.get_queued_room(floor)
+            if queued:
+                duty_room = queued['room_number']
+                await db.clear_duty_queue(floor, duty_room)
+            else:
+                # 2. Normal hisoblash (offset bilan)
+                cursor = await conn.execute(
+                    "SELECT number, duty_days FROM rooms WHERE floor = ? ORDER BY number",
+                    (floor,)
                 )
+                rooms = await cursor.fetchall()
+                
+                # Navbat ketma-ketligini yaratish
+                duty_sequence = []
+                for room_num, duty_days in rooms:
+                    duty_sequence.extend([room_num] * duty_days)
+                
+                # Bugungi kun uchun navbatchi xonani hisoblash
+                day_of_year = today.timetuple().tm_yday
+                # Har qavat uchun offset - shunda har qavatda har xil xona
+                floor_offset = (floor - 2) * 3  # 2-qavat: 0, 3-qavat: 3, 4-qavat: 6...
+                duty_index = (day_of_year + floor_offset) % len(duty_sequence)
+                duty_room = duty_sequence[duty_index]
+            
+            # Bazaga yozish
+            await conn.execute(
+                """INSERT INTO duty_schedule (date, room_number, floor, status)
+                   VALUES (?, ?, ?, 'pending')""",
+                (today.isoformat(), duty_room, floor)
+            )
         
         await conn.commit()
 

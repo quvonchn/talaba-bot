@@ -42,30 +42,42 @@ async def generate_duty_schedule():
     
     async with aiosqlite.connect(db.DATABASE_PATH) as conn:
         for floor in range(2, 10):
-            cursor = await conn.execute(
-                "SELECT number, duty_days FROM rooms WHERE floor = ? ORDER BY number",
-                (floor,)
-            )
-            rooms = await cursor.fetchall()
-            
-            duty_sequence = []
-            for room_num, duty_days in rooms:
-                duty_sequence.extend([room_num] * duty_days)
-            
-            day_of_year = today.timetuple().tm_yday
-            duty_index = day_of_year % len(duty_sequence)
-            duty_room = duty_sequence[duty_index]
-            
+            # Avval mavjud jadval bor-yo'qligini tekshirish
             existing = await conn.execute(
                 "SELECT id FROM duty_schedule WHERE date = ? AND floor = ?",
                 (today.isoformat(), floor)
             )
-            if not await existing.fetchone():
-                await conn.execute(
-                    """INSERT INTO duty_schedule (date, room_number, floor, status)
-                       VALUES (?, ?, ?, 'pending')""",
-                    (today.isoformat(), duty_room, floor)
+            if await existing.fetchone():
+                continue  # Allaqachon mavjud
+            
+            # 1. Avval queue'dagi xonalarni tekshirish (skip qilinganlar)
+            queued = await db.get_queued_room(floor)
+            if queued:
+                duty_room = queued['room_number']
+                await db.clear_duty_queue(floor, duty_room)
+            else:
+                # 2. Normal hisoblash (offset bilan)
+                cursor = await conn.execute(
+                    "SELECT number, duty_days FROM rooms WHERE floor = ? ORDER BY number",
+                    (floor,)
                 )
+                rooms = await cursor.fetchall()
+                
+                duty_sequence = []
+                for room_num, duty_days in rooms:
+                    duty_sequence.extend([room_num] * duty_days)
+                
+                day_of_year = today.timetuple().tm_yday
+                # Har qavat uchun offset - shunda har qavatda har xil xona
+                floor_offset = (floor - 2) * 3  # 2-qavat: 0, 3-qavat: 3, 4-qavat: 6...
+                duty_index = (day_of_year + floor_offset) % len(duty_sequence)
+                duty_room = duty_sequence[duty_index]
+            
+            await conn.execute(
+                """INSERT INTO duty_schedule (date, room_number, floor, status)
+                   VALUES (?, ?, ?, 'pending')""",
+                (today.isoformat(), duty_room, floor)
+            )
         
         await conn.commit()
 
@@ -354,6 +366,70 @@ async def add_penalty(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 
+async def skip_room(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Xonani o'tkazish - faqat sardorlar uchun"""
+    user = update.effective_user
+    
+    # Sardorligini tekshirish
+    supervisor = await db.get_floor_supervisor_by_telegram(str(user.id))
+    if not supervisor:
+        await update.message.reply_text(
+            "❌ Bu buyruq faqat sardorlar uchun!\n"
+            "Admin panelda sardor sifatida ro'yxatdan o'ting."
+        )
+        return
+    
+    if len(context.args) < 1:
+        await update.message.reply_text(
+            "❌ Format: `/skip [xona] [sabab]`\n"
+            "Misol: `/skip 205 kasallik`",
+            parse_mode='Markdown'
+        )
+        return
+    
+    try:
+        room_number = int(context.args[0])
+    except ValueError:
+        await update.message.reply_text("❌ Noto'g'ri xona raqami!")
+        return
+    
+    reason = " ".join(context.args[1:]) if len(context.args) > 1 else "Sabab ko'rsatilmagan"
+    floor = room_number // 100
+    
+    # Sardor bu qavatga mas'ul ekanligini tekshirish
+    supervisor_floors = supervisor['floors'].split(',')
+    if str(floor) not in supervisor_floors:
+        await update.message.reply_text(
+            f"❌ Siz {floor}-qavat sardori emassiz!\n"
+            f"Sizning qavatlaringiz: {supervisor['floors']}"
+        )
+        return
+    
+    # Keyingi xonani hisoblash
+    next_room = await db.get_next_room_in_sequence(floor, room_number)
+    
+    # Navbatga qo'shish (ertaga navbatchi bo'ladi)
+    await db.skip_duty_room(floor, room_number, reason, f"{user.id}:{user.first_name}")
+    
+    # Bugungi navbatni yangilash
+    today = date.today().isoformat()
+    import aiosqlite
+    async with aiosqlite.connect(db.DATABASE_PATH) as conn:
+        await conn.execute(
+            "UPDATE duty_schedule SET room_number = ? WHERE date = ? AND floor = ?",
+            (next_room, today, floor)
+        )
+        await conn.commit()
+    
+    await update.message.reply_text(
+        f"✅ **Xona o'tkazildi!**\n\n"
+        f"⏭️ Bugun: **{next_room}-xona** navbatchi\n"
+        f"📅 Ertaga: **{room_number}-xona** navbatchi (qarzi)\n"
+        f"📝 Sabab: {reason}",
+        parse_mode='Markdown'
+    )
+
+
 # ============= CALLBACK HANDLERS =============
 
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -614,6 +690,7 @@ def main():
     app.add_handler(CommandHandler("setsardor", set_supervisor))
     app.add_handler(CommandHandler("setadmin", set_admin))
     app.add_handler(CommandHandler("jazo", add_penalty))
+    app.add_handler(CommandHandler("skip", skip_room))
     app.add_handler(CommandHandler("testdavomat", test_attendance_request))
     app.add_handler(CommandHandler("davomathisobot", send_attendance_report))
     

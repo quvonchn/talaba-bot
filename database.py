@@ -95,6 +95,18 @@ async def init_db():
             )
         """)
         
+        # Navbat navbati (skip qilingan xonalar)
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS duty_queue (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                floor INTEGER,
+                room_number INTEGER,
+                reason TEXT,
+                skipped_by TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        
         await db.commit()
         
         # Agar xonalar yo'q bo'lsa, yaratamiz
@@ -336,3 +348,63 @@ async def get_attendance_by_date(target_date: str) -> list:
         rows = await cursor.fetchall()
         return [dict(row) for row in rows]
 
+
+# ========== Duty Queue (Skip) ==========
+
+async def skip_duty_room(floor: int, room_number: int, reason: str, skipped_by: str):
+    """Xonani o'tkazish va navbatga qo'shish"""
+    async with aiosqlite.connect(DATABASE_PATH) as db:
+        await db.execute(
+            """INSERT INTO duty_queue (floor, room_number, reason, skipped_by)
+               VALUES (?, ?, ?, ?)""",
+            (floor, room_number, reason, skipped_by)
+        )
+        await db.commit()
+
+
+async def get_queued_room(floor: int) -> dict:
+    """Navbatdagi birinchi xonani olish (FIFO)"""
+    async with aiosqlite.connect(DATABASE_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        cursor = await db.execute(
+            "SELECT * FROM duty_queue WHERE floor = ? ORDER BY id LIMIT 1",
+            (floor,)
+        )
+        row = await cursor.fetchone()
+        return dict(row) if row else None
+
+
+async def clear_duty_queue(floor: int, room_number: int):
+    """Xonani navbatdan o'chirish (bajarilgandan keyin)"""
+    async with aiosqlite.connect(DATABASE_PATH) as db:
+        await db.execute(
+            "DELETE FROM duty_queue WHERE floor = ? AND room_number = ? ORDER BY id LIMIT 1",
+            (floor, room_number)
+        )
+        await db.commit()
+
+
+async def get_all_queued_rooms() -> list:
+    """Barcha navbatdagi xonalar"""
+    async with aiosqlite.connect(DATABASE_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        cursor = await db.execute("SELECT * FROM duty_queue ORDER BY floor, id")
+        rows = await cursor.fetchall()
+        return [dict(row) for row in rows]
+
+
+async def get_next_room_in_sequence(floor: int, current_room: int) -> int:
+    """Keyingi xona raqamini olish"""
+    async with aiosqlite.connect(DATABASE_PATH) as db:
+        cursor = await db.execute(
+            "SELECT number FROM rooms WHERE floor = ? ORDER BY number",
+            (floor,)
+        )
+        rooms = await cursor.fetchall()
+        room_numbers = [r[0] for r in rooms]
+        
+        if current_room in room_numbers:
+            idx = room_numbers.index(current_room)
+            next_idx = (idx + 1) % len(room_numbers)
+            return room_numbers[next_idx]
+        return room_numbers[0] if room_numbers else None
